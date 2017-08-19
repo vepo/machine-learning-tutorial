@@ -162,4 +162,3 @@ with tf.Session() as session:
     )
 
     model_builder.save()
-
