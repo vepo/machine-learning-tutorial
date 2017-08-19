@@ -1,164 +1,153 @@
+import sys
 import tensorflow as tf
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-# Load training data set from CSV file
-training_data_df = pd.read_csv("rent-data.csv", dtype=float)
+def create_layer(layer_index, input_nodes, output_nodes, data):
+    with tf.variable_scope('layer_' + str(layer_index)):
+        weights = tf.get_variable(name='weights_' + str(layer_index), shape=[input_nodes, output_nodes], initializer=tf.contrib.layers.xavier_initializer())
+        biases = tf.get_variable(name='biases_'+ str(layer_index), shape=[output_nodes], initializer=tf.zeros_initializer())
+        output = tf.nn.relu(tf.matmul(data, weights) + biases)
+    return output
 
-# Pull out columns for X (data to train with) and Y (value to predict)
-X_training = training_data_df.drop('rent', axis=1).values
-Y_training = training_data_df[['rent']].values
+def train(layer_1_nodes, layer_2_nodes, layer_3_nodes, export):
+    # Load training data set from CSV file
+    training_data_df = pd.read_csv("rent-data.csv", dtype=float)
 
-# Load testing data set from CSV file
-test_data_df = pd.read_csv("rent-data.csv", dtype=float)
+    # Pull out columns for X (data to train with) and Y (value to predict)
+    X_training = training_data_df.drop('rent', axis=1).values
+    Y_training = training_data_df[['rent']].values
 
-# Pull out columns for X (data to train with) and Y (value to predict)
-X_testing = test_data_df.drop('rent', axis=1).values
-Y_testing = test_data_df[['rent']].values
+    # Load testing data set from CSV file
+    test_data_df = pd.read_csv("rent-data.csv", dtype=float)
 
-# All data needs to be scaled to a small range like 0 to 1 for the neural
-# network to work well. Create scalers for the inputs and outputs.
-X_scaler = MinMaxScaler(feature_range=(0, 1))
-Y_scaler = MinMaxScaler(feature_range=(0, 1))
+    # Pull out columns for X (data to train with) and Y (value to predict)
+    X_testing = test_data_df.drop('rent', axis=1).values
+    Y_testing = test_data_df[['rent']].values
 
-# Scale both the training inputs and outputs
-X_scaled_training = X_scaler.fit_transform(X_training)
-Y_scaled_training = Y_scaler.fit_transform(Y_training)
+    # All data needs to be scaled to a small range like 0 to 1 for the neural
+    # network to work well. Create scalers for the inputs and outputs.
+    X_scaler = MinMaxScaler(feature_range=(0, 1))
+    Y_scaler = MinMaxScaler(feature_range=(0, 1))
 
-# It's very important that the training and test data are scaled with the same scaler.
-X_scaled_testing = X_scaler.transform(X_testing)
-Y_scaled_testing = Y_scaler.transform(Y_testing)
+    # Scale both the training inputs and outputs
+    X_scaled_training = X_scaler.fit_transform(X_training)
+    Y_scaled_training = Y_scaler.fit_transform(Y_training)
 
-print(X_scaled_testing.shape)
-print(Y_scaled_testing.shape)
+    # It's very important that the training and test data are scaled with the same scaler.
+    X_scaled_testing = X_scaler.transform(X_testing)
+    Y_scaled_testing = Y_scaler.transform(Y_testing)
 
-print("Note: Y values were scaled by multiplying by {:.10f} and adding {:.4f}".format(Y_scaler.scale_[0], Y_scaler.min_[0]))
+    # Define how many inputs and outputs are in our neural network
+    number_of_inputs = 4
+    number_of_outputs = 1
 
-# Define model parameters
-learning_rate = 0.001
-training_epochs = 100
-    
-# Define how many inputs and outputs are in our neural network
-number_of_inputs = 4
-number_of_outputs = 1
+    # Define how many neurons we want in each layer of our neural network
+    RUN_NAME = "run 2 with " + str(layer_1_nodes) + " nodes"
+    learning_rate = 0.001
+    training_epochs = 100
 
-# Define how many neurons we want in each layer of our neural network
-RUN_NAME = "run 2 with 50 nodes"
-learning_rate = 0.001
-training_epochs = 100
+    # Section One: Define the layers of the neural network itself
 
-# Define how many neurons we want in each layer of our neural network
-layer_1_nodes = 50
-layer_2_nodes = 100
-layer_3_nodes = 50
+    # Input Layer
+    with tf.variable_scope('input'):
+        X = tf.placeholder(tf.float32, shape=(None, number_of_inputs), name="X")
 
-# Section One: Define the layers of the neural network itself
+    # Layer 1
+    layer_1_output = create_layer(1, number_of_inputs, layer_1_nodes, X)
 
-# Input Layer
-with tf.variable_scope('input'):
-    X = tf.placeholder(tf.float32, shape=(None, number_of_inputs), name="X")
+    # Layer 2
+    layer_2_output = create_layer(2, layer_1_nodes, layer_2_nodes, layer_1_output)
 
-# Layer 1
-with tf.variable_scope('layer_1'):
-    weights = tf.get_variable("weights1", shape=[number_of_inputs, layer_1_nodes], initializer=tf.contrib.layers.xavier_initializer())
-    biases = tf.get_variable(name="biases1", shape=[layer_1_nodes], initializer=tf.zeros_initializer())
-    layer_1_output = tf.nn.relu(tf.matmul(X, weights) + biases)
+    # Layer 3
+    layer_3_output = create_layer(3, layer_2_nodes, layer_3_nodes, layer_2_output)
 
-# Layer 2
-with tf.variable_scope('layer_2'):
-    weights = tf.get_variable("weights2", shape=[layer_1_nodes, layer_2_nodes], initializer=tf.contrib.layers.xavier_initializer())
-    biases = tf.get_variable(name="biases2", shape=[layer_2_nodes], initializer=tf.zeros_initializer())
-    layer_2_output = tf.nn.relu(tf.matmul(layer_1_output, weights) + biases)
+    # Output Layer
+    with tf.variable_scope('output'):
+        weights = tf.get_variable("weights4", shape=[layer_3_nodes, number_of_outputs], initializer=tf.contrib.layers.xavier_initializer())
+        biases = tf.get_variable(name="biases4", shape=[number_of_outputs], initializer=tf.zeros_initializer())
+        prediction = tf.matmul(layer_3_output, weights) + biases
 
-# Layer 3
-with tf.variable_scope('layer_3'):
-    weights = tf.get_variable("weights3", shape=[layer_2_nodes, layer_3_nodes], initializer=tf.contrib.layers.xavier_initializer())
-    biases = tf.get_variable(name="biases3", shape=[layer_3_nodes], initializer=tf.zeros_initializer())
-    layer_3_output = tf.nn.relu(tf.matmul(layer_2_output, weights) + biases)
+    # Section Two: Define the cost function of the neural network that will be optimized during training
 
-# Output Layer
-with tf.variable_scope('output'):
-    weights = tf.get_variable("weights4", shape=[layer_3_nodes, number_of_outputs], initializer=tf.contrib.layers.xavier_initializer())
-    biases = tf.get_variable(name="biases4", shape=[number_of_outputs], initializer=tf.zeros_initializer())
-    prediction = tf.matmul(layer_3_output, weights) + biases
+    with tf.variable_scope('cost'):
+        Y = tf.placeholder(tf.float32, shape=(None, 1), name="Y")
+        cost = tf.reduce_mean(tf.squared_difference(prediction, Y))
 
-# Section Two: Define the cost function of the neural network that will be optimized during training
+    # Section Three: Define the optimizer function that will be run to optimize the neural network
 
-with tf.variable_scope('cost'):
-    Y = tf.placeholder(tf.float32, shape=(None, 1), name="Y")
-    cost = tf.reduce_mean(tf.squared_difference(prediction, Y))
+    with tf.variable_scope('train'):
+        optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
-# Section Three: Define the optimizer function that will be run to optimize the neural network
+    # Create a summary operation to log the progress of the network
+    with tf.variable_scope('logging'):
+        tf.summary.scalar('current_cost', cost)
+        summary = tf.summary.merge_all()
 
-with tf.variable_scope('train'):
-    optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
+    # Initialize a session so that we can run TensorFlow operations
+    with tf.Session() as session:
 
-# Create a summary operation to log the progress of the network
-with tf.variable_scope('logging'):
-    tf.summary.scalar('current_cost', cost)
-    summary = tf.summary.merge_all()
+        # Run the global variable initializer to initialize all variables and layers of the neural network
+        session.run(tf.global_variables_initializer())
 
-# Initialize a session so that we can run TensorFlow operations
-with tf.Session() as session:
+        # Create log file writers to record training progress.
+        # We'll store training and testing log data separately.
+        training_writer = tf.summary.FileWriter("/train/logs/{}/training".format(RUN_NAME), session.graph)
+        testing_writer = tf.summary.FileWriter("/train/logs/{}/testing".format(RUN_NAME), session.graph)
 
-    # Run the global variable initializer to initialize all variables and layers of the neural network
-    session.run(tf.global_variables_initializer())
+        # Run the optimizer over and over to train the network.
+        # One epoch is one full run through the training data set.
+        for epoch in range(training_epochs):
 
-    # Create log file writers to record training progress.
-    # We'll store training and testing log data separately.
-    training_writer = tf.summary.FileWriter("/train/logs/{}/training".format(RUN_NAME), session.graph)
-    testing_writer = tf.summary.FileWriter("/train/logs/{}/testing".format(RUN_NAME), session.graph)
+            # Feed in the training data and do one step of neural network training
+            session.run(optimizer, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
 
-    # Run the optimizer over and over to train the network.
-    # One epoch is one full run through the training data set.
-    for epoch in range(training_epochs):
+            # Every few training steps, log our progress
+            if epoch % 5 == 0:
+                # Get the current accuracy scores by running the "cost" operation on the training and test data sets
+                training_cost, training_summary = session.run([cost, summary], feed_dict={X: X_scaled_training, Y:Y_scaled_training})
+                testing_cost, testing_summary = session.run([cost, summary], feed_dict={X: X_scaled_testing, Y:Y_scaled_testing})
 
-        # Feed in the training data and do one step of neural network training
-        session.run(optimizer, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
+                # Write the current training status to the log files (Which we can view with TensorBoard)
+                training_writer.add_summary(training_summary, epoch)
+                testing_writer.add_summary(testing_summary, epoch)
 
-        # Every few training steps, log our progress
-        if epoch % 5 == 0:
-            # Get the current accuracy scores by running the "cost" operation on the training and test data sets
-            training_cost, training_summary = session.run([cost, summary], feed_dict={X: X_scaled_training, Y:Y_scaled_training})
-            testing_cost, testing_summary = session.run([cost, summary], feed_dict={X: X_scaled_testing, Y:Y_scaled_testing})
+                # Print the current training status to the screen
+                print("Epoch: {} - Training Cost: {}  Testing Cost: {}".format(epoch, training_cost, testing_cost))
 
-            # Write the current training status to the log files (Which we can view with TensorBoard)
-            training_writer.add_summary(training_summary, epoch)
-            testing_writer.add_summary(testing_summary, epoch)
+        # Training is now complete!
 
-            # Print the current training status to the screen
-            print("Epoch: {} - Training Cost: {}  Testing Cost: {}".format(epoch, training_cost, testing_cost))
+        # Get the final accuracy scores by running the "cost" operation on the training and test data sets
+        final_training_cost = session.run(cost, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
+        final_testing_cost = session.run(cost, feed_dict={X: X_scaled_testing, Y: Y_scaled_testing})
 
-    # Training is now complete!
+        print("Final Training cost: {}".format(final_training_cost))
+        print("Final Testing cost: {}".format(final_testing_cost))
+        if export:
+            model_builder = tf.saved_model.builder.SavedModelBuilder("exported_model")
 
-    # Get the final accuracy scores by running the "cost" operation on the training and test data sets
-    final_training_cost = session.run(cost, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
-    final_testing_cost = session.run(cost, feed_dict={X: X_scaled_testing, Y: Y_scaled_testing})
+            inputs = {
+                'input': tf.saved_model.utils.build_tensor_info(X)
+                }
+            outputs = {
+                'earnings': tf.saved_model.utils.build_tensor_info(prediction)
+                }
 
-    print("Final Training cost: {}".format(final_training_cost))
-    print("Final Testing cost: {}".format(final_testing_cost))
+            signature_def = tf.saved_model.signature_def_utils.build_signature_def(
+                inputs=inputs,
+                outputs=outputs,
+                method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME
+            )
 
-    model_builder = tf.saved_model.builder.SavedModelBuilder("exported_model")
+            model_builder.add_meta_graph_and_variables(
+                session,
+                tags=[tf.saved_model.tag_constants.SERVING],
+                signature_def_map={
+                    tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature_def
+                }
+            )
 
-    inputs = {
-        'input': tf.saved_model.utils.build_tensor_info(X)
-        }
-    outputs = {
-        'earnings': tf.saved_model.utils.build_tensor_info(prediction)
-        }
+            model_builder.save()
 
-    signature_def = tf.saved_model.signature_def_utils.build_signature_def(
-        inputs=inputs,
-        outputs=outputs,
-        method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME
-    )
-
-    model_builder.add_meta_graph_and_variables(
-        session,
-        tags=[tf.saved_model.tag_constants.SERVING],
-        signature_def_map={
-            tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: signature_def
-        }
-    )
-
-    model_builder.save()
+if __name__ == "__main__":
+    train(int(sys.argv[1]), 100, 50, eval(sys.argv[2]))

@@ -28,10 +28,12 @@ ADD train_data.py train_data.py
 ADD rent-data.csv rent-data.csv 
 
 # Trainning model
-RUN ~/tensorflow/bin/python train_data.py
+RUN ~/tensorflow/bin/python train_data.py 10 False
+RUN ~/tensorflow/bin/python train_data.py 50 False
+RUN ~/tensorflow/bin/python train_data.py 100 True
 
 # Uploading model
-RUN ./upload-model.sh
+#RUN ./upload-model.sh
 
 EXPOSE 6006
 
