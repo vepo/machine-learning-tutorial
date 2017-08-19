@@ -2,6 +2,13 @@
 
 This is a simple tutorial of how create a Tensorflow model and how to use this model in a application.
 
+## When use Machine Learning
+
+With Machine Learning you can: 
+
+* Predict values using the historical data.
+* ...
+
 ## What is Tensorflow
 
 Tensor is a Google framework that helps you add Machine Learning to your application.
