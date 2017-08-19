@@ -28,8 +28,10 @@ With everything running fine, you should start trainning your model. You can see
 
 Running the train container, you can inspect the trainning you had done at http://localhost:6006.
 
-> docker build -t mlt-trainning train/
-> docker run -p 6006:6006 --name mlt -i -t mlt
+```bash
+docker build -t mlt-trainning train/
+docker run -p 6006:6006 --name mlt -i -t mlt
+```
 
 ## Serving the data
 
