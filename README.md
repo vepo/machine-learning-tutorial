@@ -18,4 +18,4 @@ So the first step for using a Machine Learning approaches is teach the machine t
 
 The first step for using Tensorflow is create the trainning environment. 
 
-You can see at [Dockerfile](prepare-train/Dockerfile) who you can setup the environment for trainging and prepare the data. 
+You can see at [Dockerfile](train/Dockerfile) who you can setup the environment for trainging and prepare the data. 
